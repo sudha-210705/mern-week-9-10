@@ -3,22 +3,30 @@ import axios from "axios";
 
 export const useAuth = create((set) => ({
   currentUser: null,
+  token: localStorage.getItem("token") || null, // ← NEW
   loading: false,
   isAuthenticated: false,
   error: null,
+
   login: async (userCredWithRole) => {
     const { role, ...userCredObj } = userCredWithRole;
     try {
-      //set loading true
       set({ loading: true, error: null });
-      //make api call
-      let res = await axios.post("https://mern-week-9-10.onrender.com/common-api/login", userCredObj, { withCredentials: true });
-      // console.log("res is ", res);
-      //update state
+      let res = await axios.post(
+        "https://mern-week-9-10.onrender.com/common-api/login",
+        userCredObj,
+        { withCredentials: true }
+      );
+
+      const { token, user } = res.data.payload; // ← CHANGED (was res.data.payload directly)
+
+      localStorage.setItem("token", token); // ← NEW
+
       set({
         loading: false,
         isAuthenticated: true,
-        currentUser: res.data.payload, //{message:"",payload:}
+        currentUser: user,  // ← CHANGED (was res.data.payload)
+        token: token,       // ← NEW
       });
     } catch (err) {
       console.log("err is ", err);
@@ -26,55 +34,65 @@ export const useAuth = create((set) => ({
         loading: false,
         isAuthenticated: false,
         currentUser: null,
-        //error: err,
         error: err.response?.data?.error || "Login failed",
       });
     }
   },
+
   logout: async () => {
     try {
-      //set loading state
       set({ loading: true, error: null });
-      //make logout api req
-      await axios.get("https://mern-week-9-10.onrender.com/common-api/logout", { withCredentials: true });
-      //update state
+      await axios.get(
+        "https://mern-week-9-10.onrender.com/common-api/logout",
+        { withCredentials: true }
+      );
+      localStorage.removeItem("token"); // ← NEW
       set({
         loading: false,
         isAuthenticated: false,
         currentUser: null,
+        token: null, // ← NEW
       });
     } catch (err) {
+      localStorage.removeItem("token"); // ← NEW (clear even on error)
       set({
         loading: false,
         isAuthenticated: false,
         currentUser: null,
+        token: null, // ← NEW
         error: err.response?.data?.error || "Logout failed",
       });
     }
   },
-  // restore login
+
   checkAuth: async () => {
+    const token = localStorage.getItem("token"); // ← NEW
+    if (!token) return set({ loading: false, isAuthenticated: false }); // ← NEW
     try {
       set({ loading: true });
-      const res = await axios.get("https://mern-week-9-10.onrender.com/common-api/check-auth", { withCredentials: true });
-
+      const res = await axios.get(
+        "https://mern-week-9-10.onrender.com/common-api/check-auth",
+        {
+          headers: { Authorization: `Bearer ${token}` }, // ← CHANGED (was withCredentials)
+        }
+      );
       set({
         currentUser: res.data.payload,
         isAuthenticated: true,
         loading: false,
+        token, // ← NEW
       });
     } catch (err) {
-      // If user is not logged in → do nothing
       if (err.response?.status === 401) {
+        localStorage.removeItem("token"); // ← NEW
         set({
           currentUser: null,
           isAuthenticated: false,
           loading: false,
+          token: null, // ← NEW
         });
         return;
       }
-
-      // other errors
       console.error("Auth check failed:", err);
       set({ loading: false });
     }
