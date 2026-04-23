@@ -3,7 +3,6 @@ import { useState } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router";
-
 import {
   formCard,
   formTitle,
@@ -19,7 +18,8 @@ import { useAuth } from "../store/authStore";
 function WriteArticle() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const currentUser=useAuth(state=>state.currentUser)
+  const currentUser = useAuth(state => state.currentUser);
+  const token = useAuth(state => state.token); // ← NEW
 
   const {
     register,
@@ -30,21 +30,19 @@ function WriteArticle() {
 
   const submitArticle = async (articleObj) => {
     setLoading(true);
-
-    //add authorId to articleObj
-articleObj.author = currentUser.userId;    try {
+    articleObj.author = currentUser.userId;
+    try {
       await axios.post(
         "https://mern-week-9-10.onrender.com/author-api/articles",
         articleObj,
-        { withCredentials: true }
+        {
+          withCredentials: true,
+          headers: { Authorization: `Bearer ${token}` }, // ← NEW
+        }
       );
-
       toast.success("Article published successfully!");
-
       reset();
-
       navigate("/author-profile/articles");
-
     } catch (err) {
       toast.error(err.response?.data?.error || "Failed to publish article");
     } finally {
@@ -55,13 +53,10 @@ articleObj.author = currentUser.userId;    try {
   return (
     <div className={formCard}>
       <h2 className={formTitle}>Write New Article</h2>
-
       <form onSubmit={handleSubmit(submitArticle)}>
-
         {/* Title */}
         <div className={formGroup}>
           <label className={labelClass}>Title</label>
-
           <input
             type="text"
             className={inputClass}
@@ -74,16 +69,13 @@ articleObj.author = currentUser.userId;    try {
               },
             })}
           />
-
           {errors.title && (
             <p className={errorClass}>{errors.title.message}</p>
           )}
         </div>
-
         {/* Category */}
         <div className={formGroup}>
           <label className={labelClass}>Category</label>
-
           <select
             className={inputClass}
             {...register("category", {
@@ -96,16 +88,13 @@ articleObj.author = currentUser.userId;    try {
             <option value="ai">AI</option>
             <option value="web-development">Web Development</option>
           </select>
-
           {errors.category && (
             <p className={errorClass}>{errors.category.message}</p>
           )}
         </div>
-
         {/* Content */}
         <div className={formGroup}>
           <label className={labelClass}>Content</label>
-
           <textarea
             rows="8"
             className={inputClass}
@@ -118,17 +107,14 @@ articleObj.author = currentUser.userId;    try {
               },
             })}
           />
-
           {errors.content && (
             <p className={errorClass}>{errors.content.message}</p>
           )}
         </div>
-
         {/* Submit */}
         <button className={submitBtn} type="submit" disabled={loading}>
           {loading ? "Publishing..." : "Publish Article"}
         </button>
-
         {loading && (
           <p className={loadingClass}>Publishing article...</p>
         )}
