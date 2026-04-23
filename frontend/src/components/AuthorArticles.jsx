@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router";
 import { useAuth } from "../store/authStore";
-
 import {
   articleCardClass,
   articleTitle,
@@ -19,35 +18,35 @@ import {
 function AuthorArticles() {
   const navigate = useNavigate();
   const user = useAuth((state) => state.currentUser);
-
+  const token = useAuth((state) => state.token); // ← NEW
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  console.log("user in author profile",user)
+  console.log("user in author profile", user);
+
   useEffect(() => {
-  if (!user || !user.userId) return;
-
-  const getAuthorArticles = async () => {
-    setLoading(true);
-
-    try {
-      const res = await axios.get(
-        `https://mern-week-9-10.onrender.com/author-api/articles/${user.userId}`,
-        { withCredentials: true }
-      );
-
-      setArticles(res.data.payload);
-    } catch (err) {
-      console.log("ERROR:", err.response?.data || err.message);
-      setError(err.response?.data?.error || "Failed to fetch articles");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  getAuthorArticles();
-}, [user]);
+    if (!user || !user.userId) return;
+    const getAuthorArticles = async () => {
+      setLoading(true);
+      try {
+        const res = await axios.get(
+          `https://mern-week-9-10.onrender.com/author-api/articles/${user.userId}`,
+          {
+            withCredentials: true,
+            headers: { Authorization: `Bearer ${token}` }, // ← NEW
+          }
+        );
+        setArticles(res.data.payload);
+      } catch (err) {
+        console.log("ERROR:", err.response?.data || err.message);
+        setError(err.response?.data?.error || "Failed to fetch articles");
+      } finally {
+        setLoading(false);
+      }
+    };
+    getAuthorArticles();
+  }, [user]);
 
   const openArticle = (article) => {
     navigate(`/article/${article._id}`, {
@@ -64,7 +63,6 @@ function AuthorArticles() {
 
   if (loading) return <p className={loadingClass}>Loading articles...</p>;
   if (error) return <p className={errorClass}>{error}</p>;
-
   if (articles.length === 0) {
     return <div className={emptyStateClass}>You haven't published any articles yet.</div>;
   }
@@ -77,15 +75,11 @@ function AuthorArticles() {
           <span className={article.isArticleActive ? articleStatusActive : articleStatusDeleted}>
             {article.isArticleActive ? "ACTIVE" : "DELETED"}
           </span>
-
           <div className="flex flex-col gap-2">
             <p className={articleMeta}>{article.category}</p>
-
             <p className={articleTitle}>{article.title}</p>
-
             <p className={articleExcerpt}>{article.content.slice(0, 60)}...</p>
           </div>
-
           <button className={`${ghostBtn} mt-auto pt-4`} onClick={() => openArticle(article)}>
             Read Article →
           </button>
